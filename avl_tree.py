@@ -23,6 +23,9 @@ class Node:
         if self.bigger != None: node_value += " " + self.bigger.print_node()
         return node_value
 
+    def recalculate_height(self):
+        pass
+
     def search(self, item):
         """
         If the value is not found in this node,
@@ -66,13 +69,60 @@ class Node:
                 
             self.height_bigger += 1
 
+        return self.__check_imbalance_and_rotate()
+        
+
+    def __check_imbalance_and_rotate(self):
         # TODO after insertion check for imbalance and rotate if necessary
         if self.height_smaller > self.height_bigger + 1:
-            print("imbalance to the smaller side at node with value", self.value)
-            pass
+            print("imbalance at node", self.value, "to the smaller side by", self.height_smaller - self.height_bigger)
+            return self.__right_rotation()
         elif self.height_smaller + 1 < self.height_bigger:
-            print("imbalance to the bigger side at node with value", self.value)
-            pass
+            print("imbalance at node", self.value, "to the bigger side by", self.height_bigger - self.height_smaller)
+            return self.__left_rotation()
+        else:
+            return None
+
+
+    def __fix_parent_relation(self, parent, bubble_up):
+        if parent:
+            if parent.smaller == self:
+                parent.smaller = bubble_up
+                parent.height_smaller -= 1
+            else:
+                parent.bigger = bubble_up
+                parent.height_bigger -= 1
+            
+            self.__adjust_parent_height()
+            return None
+        else:
+            return bubble_up
+
+    def __adjust_parent_height(self):
+        pass
+
+
+    def __left_rotation(self):
+        parent = self.parent
+        bubble_up = self.bigger
+        _tmp = bubble_up.smaller
+        bubble_up.smaller = self
+        self.bigger = _tmp
+        #bubble_up.height_smaller += self.height_smaller + 1
+        #self.height_bigger += bubble_up.height_bigger
+        return self.__fix_parent_relation(parent, bubble_up)
+        
+
+    def __right_rotation(self):
+        parent = self.parent
+        bubble_up = self.smaller
+        _tmp = bubble_up.bigger
+        bubble_up.bigger = self
+        self.smaller = _tmp
+        #bubble_up.height_bigger = max()
+        #bubble_up.height_bigger += self.height_bigger + 1
+        #self.height_smaller += bubble_up.height_smaller
+        return self.__fix_parent_relation(parent, bubble_up)
 
 
 class Tree:
@@ -104,12 +154,18 @@ class Tree:
             print(this_level_values)
             this_level = next_level
 
+    def recalculate_heights(self):
+        self.root.recalculate_height()
+
     def search(self, item):
         return self.root.search(item)
 
     def insert(self, item):
         if self.root:
-            self.root.insert(item)
+            return_node = self.root.insert(item)
+            if return_node:
+                self.root = return_node
+            self.recalculate_heights()
         else:
             self.root = Node(item)
             
