@@ -13,9 +13,10 @@ class Node:
         self.bigger = None
         self.height_smaller = 0
         self.height_bigger = 0
-        
+
 
     def print_node(self):
+        self.traverse(self)
         # print looks like this <value>hs<height_of_smaller_subtree>hb<height_of_bigger_subtree>
         node_value = str(self.value)+"hs"+str(self.height_smaller)+"hb"+str(self.height_bigger)
         if self.smaller != None: node_value += " " + self.smaller.print_node()
@@ -31,15 +32,15 @@ class Node:
             return True
         else:
             if item < self.value:
-                if self.smaller == None:
-                    return False
-                else:
+                if self.smaller:
                     return self.smaller.search(item)
-            else:
-                if self.bigger == None:
-                    return False
                 else:
+                    return False
+            else:
+                if self.bigger:
                     return self.bigger.search(item)
+                else:
+                    return False
 
 
     def insert(self, item):
@@ -50,26 +51,27 @@ class Node:
         After insertion the tree checks its balance and rotates accordingly.
         """
         if item < self.value:
-            if self.smaller == None:
+            if self.smaller:
+                self.smaller.insert(item)
+            else:
                 self.smaller = Node(item)
                 self.smaller.parent = self
-            else:
-                self.smaller.insert(item)
             self.height_smaller += 1
         else:
-            if self.bigger == None:
+            if self.bigger:
+                self.bigger.insert(item)
+            else:
                 self.bigger = Node(item)
                 self.bigger.parent = self
-            else:
-                self.bigger.insert(item)
+                
             self.height_bigger += 1
 
         # TODO after insertion check for imbalance and rotate if necessary
         if self.height_smaller > self.height_bigger + 1:
-            print("imbalance to the smaller side at Node", self.value)
+            print("imbalance to the smaller side at node with value", self.value)
             pass
         elif self.height_smaller + 1 < self.height_bigger:
-            print("imbalance to the bigger side at Node", self.value)
+            print("imbalance to the bigger side at node with value", self.value)
             pass
 
 
@@ -83,17 +85,34 @@ class Tree:
         self.root = None
 
     def print_tree(self):
-        print(self.root.print_node())
+        """
+        Source: https://stackoverflow.com/a/1894914 (slightly modified)
+        Smaller values get printed first, bigger values last.
+        The printing is NOT optimal! When a node only has a right child its output still does get aligned left!
+        """
+        if not self.root:
+            print("tree is empty")
+            return
+        this_level = [self.root]
+        while this_level:
+            next_level = list()
+            this_level_values = ""
+            for node in this_level:
+                this_level_values += " " + str(node.value) # space is important for multidigit integer
+                if node.smaller: next_level.append(node.smaller)
+                if node.bigger: next_level.append(node.bigger)
+            print(this_level_values)
+            this_level = next_level
 
     def search(self, item):
         return self.root.search(item)
 
     def insert(self, item):
-        if self.root == None:
-            self.root = Node(item)
-        else:
+        if self.root:
             self.root.insert(item)
-
+        else:
+            self.root = Node(item)
+            
 
     # not implemented for this project
     def delete(self, item):
