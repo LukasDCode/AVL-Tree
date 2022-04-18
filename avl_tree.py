@@ -1,3 +1,5 @@
+verbose = False
+
 class Node:
     """
     Node objects have to handle all the heavy lifting of this data structure.
@@ -16,15 +18,9 @@ class Node:
 
 
     def print_node(self):
-        self.traverse(self)
         # print looks like this <value>hs<height_of_smaller_subtree>hb<height_of_bigger_subtree>
-        node_value = str(self.value)+"hs"+str(self.height_smaller)+"hb"+str(self.height_bigger)
-        if self.smaller != None: node_value += " " + self.smaller.print_node()
-        if self.bigger != None: node_value += " " + self.bigger.print_node()
-        return node_value
+        return str(self.value)+"hs"+str(self.height_smaller)+"hb"+str(self.height_bigger)
 
-    def recalculate_height(self):
-        pass
 
     def search(self, item):
         """
@@ -59,71 +55,99 @@ class Node:
             else:
                 self.smaller = Node(item)
                 self.smaller.parent = self
-            self.height_smaller += 1
+            self.smaller.__adjust_parent_height()
+
         else:
             if self.bigger:
                 self.bigger.insert(item)
             else:
                 self.bigger = Node(item)
                 self.bigger.parent = self
-                
-            self.height_bigger += 1
-
-        return self.__check_imbalance_and_rotate()
-        
-
-    def __check_imbalance_and_rotate(self):
-        # TODO after insertion check for imbalance and rotate if necessary
-        if self.height_smaller > self.height_bigger + 1:
-            print("imbalance at node", self.value, "to the smaller side by", self.height_smaller - self.height_bigger)
-            return self.__right_rotation()
-        elif self.height_smaller + 1 < self.height_bigger:
-            print("imbalance at node", self.value, "to the bigger side by", self.height_bigger - self.height_smaller)
-            return self.__left_rotation()
-        else:
-            return None
+            self.bigger.__adjust_parent_height()
 
 
-    def __fix_parent_relation(self, parent, bubble_up):
+    def __fix_parent_relation(self, parent, swap):
+        """
+        Sets the pointer to a smaller Node of a parent Node.
+        Returns the swap Node if it is the tree of the root (= has no parent).
+        """
         if parent:
             if parent.smaller == self:
-                parent.smaller = bubble_up
-                parent.height_smaller -= 1
+                parent.smaller = swap
             else:
-                parent.bigger = bubble_up
-                parent.height_bigger -= 1
-            
-            self.__adjust_parent_height()
+                parent.bigger = swap            
             return None
         else:
-            return bubble_up
+            return swap
 
     def __adjust_parent_height(self):
-        pass
+        """
+        Recursively goes the tree back up to the root and updates all the smaller and bigger heights.
+        Heights only get updated when the value actually changes, this is important for verbose reasons.
+        Checks are done while inserting and while rotating, so the verbose output does not get overblown.
+        """
+        if self.parent:
+            new_value = max(self.height_bigger, self.height_smaller) + 1
+            if self == self.parent.smaller:
+                if self.parent.height_smaller != new_value:
+                    if verbose: print("update smaller height of", self.parent.value, "to", new_value)
+                    self.parent.height_smaller = new_value
+            else:
+                if self.parent.height_bigger != new_value:
+                    if verbose: print("update bigger height of", self.parent.value, "to", max(self.height_bigger, self.height_smaller) + 1)
+                    self.parent.height_bigger = new_value
+            self.parent.__adjust_parent_height()
 
 
-    def __left_rotation(self):
+    def left_rotation(self):
+        # rearranging all the pointers
         parent = self.parent
-        bubble_up = self.bigger
-        _tmp = bubble_up.smaller
-        bubble_up.smaller = self
+        swap = self.bigger
+
+        _tmp = swap.smaller
+        swap.smaller = self
+        self.parent = swap
         self.bigger = _tmp
-        #bubble_up.height_smaller += self.height_smaller + 1
-        #self.height_bigger += bubble_up.height_bigger
-        return self.__fix_parent_relation(parent, bubble_up)
+        swap.parent = parent
+        
+        return_node = self.__fix_parent_relation(parent, swap)
+        
+        # updating the heights
+        if _tmp:
+            self.height_bigger = max(_tmp.height_smaller, _tmp.height_bigger) + 1
+        else:
+            self.height_bigger = 0
+        
+        swap.height_smaller = max(self.height_smaller, self.height_bigger) + 1
+        swap.__adjust_parent_height()
+
+        return return_node # either the new root or None
         
 
-    def __right_rotation(self):
+    def right_rotation(self):
+        # rearranging all the pointers
         parent = self.parent
-        bubble_up = self.smaller
-        _tmp = bubble_up.bigger
-        bubble_up.bigger = self
-        self.smaller = _tmp
-        #bubble_up.height_bigger = max()
-        #bubble_up.height_bigger += self.height_bigger + 1
-        #self.height_smaller += bubble_up.height_smaller
-        return self.__fix_parent_relation(parent, bubble_up)
+        swap = self.smaller
 
+        _tmp = swap.bigger
+        swap.bigger = self
+        self.parent = swap
+        self.smaller = _tmp
+        swap.parent = parent
+        
+        return_node = self.__fix_parent_relation(parent, swap)
+        
+        # updating the heights
+        if _tmp:
+            self.height_smaller = max(_tmp.height_smaller, _tmp.height_bigger) + 1
+        else:
+            self.height_smaller = 0
+        
+        swap.height_bigger = max(self.height_smaller, self.height_bigger) + 1
+        swap.__adjust_parent_height()
+
+        return return_node # either the new root or None
+        
 
 class Tree:
     """
@@ -133,6 +157,7 @@ class Tree:
 
     def __init__(self):
         self.root = None
+        verbose = False
 
     def print_tree(self):
         """
@@ -148,24 +173,26 @@ class Tree:
             next_level = list()
             this_level_values = ""
             for node in this_level:
-                this_level_values += " " + str(node.value) # space is important for multidigit integer
+                this_level_values += " " + node.print_node() # space is important for multidigit integer
                 if node.smaller: next_level.append(node.smaller)
                 if node.bigger: next_level.append(node.bigger)
             print(this_level_values)
             this_level = next_level
 
-    def recalculate_heights(self):
-        self.root.recalculate_height()
 
     def search(self, item):
         return self.root.search(item)
 
     def insert(self, item):
+        """
+        After each insertion, the heights of the nodes are checked and specific subtrees are rotated if necessary.
+        The first inserted Node is stored as the root of the Tree object.
+        """
         if self.root:
-            return_node = self.root.insert(item)
+            self.root.insert(item)
+            return_node = self.check_imbalance_and_rotate(self.root)
             if return_node:
                 self.root = return_node
-            self.recalculate_heights()
         else:
             self.root = Node(item)
             
@@ -174,12 +201,46 @@ class Tree:
     def delete(self, item):
         pass
 
+    def check_imbalance_and_rotate(self, node):
+        """
+        Goes down to the leafs and recursively checks whether rotations, simple or double, are necessary.
+        Returns a rotated Node as the new root, if the root of the tree has changed.
+        """
+        return_node = None # None if root of the tree does not change
+        if node.smaller: _ = self.check_imbalance_and_rotate(node.smaller)
+        if node.bigger: _ = self.check_imbalance_and_rotate(node.bigger)
+
+        if node.height_smaller > node.height_bigger + 1:
+            # simple right rotation
+            if node.smaller.height_smaller > node.smaller.height_bigger:
+                if verbose: print("imbalance at node", node.value, "to the smaller side\n--> simple right rotation")
+                return_node = node.right_rotation()
+            # left and then right rotation
+            else:
+                if verbose: print("imbalance at node", node.value, "to the smaller side and then to the bigger side"
+                    + "\n--> left rotation and then right rotation")
+                _ = node.smaller.left_rotation()
+                return_node = node.right_rotation()
+        elif node.height_smaller + 1 < node.height_bigger:
+            # simple left rotation
+            if node.bigger.height_smaller < node.bigger.height_bigger:
+                if verbose: print("imbalance at node", node.value, "to the bigger side\n--> simple left rotation")
+                return_node = node.left_rotation()
+            # right and then left rotation
+            else:
+                if verbose: print("imbalance at node", node.value, "to the bigger side and then to the smaller side"
+                    + "\n--> right rotation and then left rotation")
+                _ = node.bigger.right_rotation()
+                return_node = node.left_rotation()
+        
+        return return_node # only returns a non-None node, when the root is rotated
+
 
 def manual_mode(tree):
     is_insert_mode = True
     print("setup avl tree")
     print("'!q' to quit, '!i' to toggle insertion mode, '!s' to toggle search mode")
-    print("!p to print the current tree as an array")
+    print("!p to print the current tree as an array, !v to toggle verbose")
     print("insertion mode activated")
     while(True):
         user_input = input().lstrip() # lstrip removes leading spaces & tabs
@@ -197,6 +258,9 @@ def manual_mode(tree):
                     print("search mode activated")
                 elif user_input[1].lower() == "p": # print
                     tree.print_tree()
+                elif user_input[1].lower() == "v": # print
+                    global verbose
+                    verbose = not verbose
                 elif user_input[1].lower() == "q": # quit
                     break
                 else:
