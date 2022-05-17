@@ -240,7 +240,7 @@ def manual_mode(tree):
     is_insert_mode = True
     print("setup avl tree")
     print("'!q' to quit, '!i' to toggle insertion mode, '!s' to toggle search mode")
-    print("!p to print the current tree as an array, !v to toggle verbose")
+    print("!p to print the current tree representation, !v to toggle verbose")
     print("insertion mode activated")
     while(True):
         user_input = input().lstrip() # lstrip removes leading spaces & tabs
